@@ -86,7 +86,7 @@ Detail: [`src/kasus3-message-broker/README.md`](src/kasus3-message-broker/README
 
 ## Cara Menjalankan
 
-Butuh **Node.js 18+** (dites pada Node 22). Tidak perlu `npm install`.
+Butuh **Node.js 20.12+** (dites pada Node 22). Mode demo **tidak perlu** `npm install`.
 
 ```bash
 # Jalankan ketiga demo sekaligus
@@ -98,9 +98,24 @@ npm run kasus2     # File + Database (batch)
 npm run kasus3     # Message Broker (asynchronous)
 ```
 
-> Catatan: skrip menggunakan `NODE_OPTIONS=` di depan perintah untuk menetralkan
-> preload bawaan environment, dan `NODE_NO_WARNINGS=1` pada Kasus 2 karena modul
-> `node:sqlite` masih berstatus eksperimental di Node.
+## Mode Demo vs Mode Nyata
+
+Setiap kasus mendukung **dua mode**, dipilih lewat file `.env` (salin dari `.env.example`):
+
+| Kasus | Mode demo (default) | Mode nyata | Variabel |
+|-------|---------------------|-----------|----------|
+| 1 — Pembayaran | `mock` (bank lokal) | **Midtrans** Core API | `PAYMENT_MODE` |
+| 2 — Laporan | `sqlite` (file lokal) | **PostgreSQL** | `DB_DRIVER` |
+| 3 — Kurir | `memory` (broker lokal) | **RabbitMQ** | `BROKER_DRIVER` |
+
+Mode nyata memakai layanan sungguhan (Midtrans sandbox, PostgreSQL, RabbitMQ).
+Layanan PostgreSQL & RabbitMQ tersedia lewat `docker compose up -d`.
+
+➡️ **Panduan langkah demi langkah lengkap (termasuk kredensial/token, Docker, webhook,
+penjadwalan, dan troubleshooting) ada di [`SETUP.md`](SETUP.md).**
+
+> Catatan: skrip Kasus 2 memakai flag `--no-warnings` karena modul `node:sqlite`
+> masih berstatus eksperimental di Node.
 
 ## Struktur Proyek
 

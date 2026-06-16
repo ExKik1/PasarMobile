@@ -3,62 +3,29 @@
 /**
  * KASUS 2 - DATABASE INTEGRATION
  * ------------------------------
- * Sistem laporan terhubung LANGSUNG ke database sistem transaksi dan
- * menjalankan query SELECT (agregasi) untuk menyusun laporan bulanan.
+ * Sistem laporan terhubung LANGSUNG ke database transaksi dan menjalankan
+ * query agregasi (di sisi DB) untuk menyusun laporan bulanan.
  *
- * Cocok bila kedua sistem berada dalam satu infrastruktur: efisien karena
- * agregasi dikerjakan oleh database, bukan ditarik baris per baris.
- *
- * Ini adalah BATCH PROCESSING: memproses seluruh data 1 bulan sekaligus.
+ * Backend (SQLite / PostgreSQL) dipilih lewat .env (DB_DRIVER) dan disembunyikan
+ * di balik modul datasource. Ini adalah BATCH PROCESSING: 1 bulan sekaligus.
  */
 
-const { DatabaseSync } = require('node:sqlite');
 const { makeLogger } = require('../shared/logger');
-const { DB_PATH } = require('./seed-database');
+const { backend, driver } = require('./datasource');
 
 const log = makeLogger('DB-INTEGRATION', 'blue');
 
-/**
- * Menghasilkan laporan bulanan via query langsung ke DB.
- * @param {string} month format 'YYYY-MM'
- */
-function generateMonthlyReport(month) {
-  log(`Query langsung ke database untuk laporan bulan ${month} ...`);
-  const db = new DatabaseSync(DB_PATH, { readOnly: true });
-  const like = `${month}-%`;
+async function generateMonthlyReport(month) {
+  log(`Query agregasi langsung ke database (${driver}) untuk bulan ${month} ...`);
+  await backend.ensureSeeded();
 
-  // Ringkasan keseluruhan (hanya transaksi PAID yang dihitung sebagai pendapatan).
-  const summary = db
-    .prepare(
-      `SELECT
-         COUNT(*)                                        AS total_transaksi,
-         SUM(CASE WHEN status='PAID' THEN 1 ELSE 0 END)  AS jumlah_paid,
-         SUM(CASE WHEN status='PAID' THEN amount ELSE 0 END) AS total_pendapatan,
-         SUM(CASE WHEN status='REFUNDED' THEN amount ELSE 0 END) AS total_refund,
-         SUM(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) AS jumlah_gagal
-       FROM transactions
-       WHERE created_at LIKE ?`
-    )
-    .get(like);
-
-  // Rincian per kategori (hanya PAID).
-  const perCategory = db
-    .prepare(
-      `SELECT category,
-              COUNT(*)    AS jumlah,
-              SUM(amount) AS pendapatan
-       FROM transactions
-       WHERE created_at LIKE ? AND status='PAID'
-       GROUP BY category
-       ORDER BY pendapatan DESC`
-    )
-    .all(like);
-
-  db.close();
+  const summary = await backend.monthlySummary(month);
+  const perCategory = await backend.perCategory(month);
 
   const report = {
     period: month,
     method: 'DATABASE_INTEGRATION',
+    driver,
     generated_at: new Date().toISOString(),
     summary,
     per_category: perCategory,
@@ -72,7 +39,13 @@ function generateMonthlyReport(month) {
 
 if (require.main === module) {
   const month = process.argv[2] || '2026-06';
-  console.log(JSON.stringify(generateMonthlyReport(month), null, 2));
+  generateMonthlyReport(month)
+    .then((r) => console.log(JSON.stringify(r, null, 2)))
+    .then(() => require('./datasource').close())
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }
 
 module.exports = { generateMonthlyReport };

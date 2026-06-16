@@ -13,9 +13,9 @@
 
 const path = require('path');
 const fs = require('fs');
-const { DatabaseSync } = require('node:sqlite');
 const { makeLogger } = require('../shared/logger');
-const { DB_PATH, DATA_DIR } = require('./seed-database');
+const { backend, driver } = require('./datasource');
+const { DATA_DIR } = require('./seed-database');
 
 const log = makeLogger('FILE-INTEGRATION', 'yellow');
 
@@ -26,19 +26,11 @@ function csvEscape(value) {
 
 /**
  * LANGKAH 1 (sisi sistem transaksi): ekspor transaksi 1 bulan ke file CSV.
- * Mengembalikan path file CSV.
+ * Mengambil data lewat datasource (SQLite/PostgreSQL). Mengembalikan path CSV.
  */
-function exportMonthToCsv(month) {
-  const db = new DatabaseSync(DB_PATH, { readOnly: true });
-  const rows = db
-    .prepare(
-      `SELECT order_id, buyer, category, amount, status, created_at
-       FROM transactions
-       WHERE created_at LIKE ?
-       ORDER BY created_at`
-    )
-    .all(`${month}-%`);
-  db.close();
+async function exportMonthToCsv(month) {
+  await backend.ensureSeeded();
+  const rows = await backend.fetchRows(month);
 
   const header = ['order_id', 'buyer', 'category', 'amount', 'status', 'created_at'];
   const lines = [header.join(',')];
@@ -50,7 +42,7 @@ function exportMonthToCsv(month) {
   fs.mkdirSync(exportDir, { recursive: true });
   const csvPath = path.join(exportDir, `transactions-${month}.csv`);
   fs.writeFileSync(csvPath, lines.join('\n'), 'utf8');
-  log.ok(`Sistem transaksi mengekspor ${rows.length} baris -> ${path.basename(csvPath)}`);
+  log.ok(`Sistem transaksi (${driver}) mengekspor ${rows.length} baris -> ${path.basename(csvPath)}`);
   return csvPath;
 }
 
@@ -101,8 +93,8 @@ function splitCsvLine(line) {
 /**
  * LANGKAH 2 (sisi sistem laporan): baca file CSV dan susun laporan bulanan.
  */
-function generateMonthlyReport(month) {
-  const csvPath = exportMonthToCsv(month);
+async function generateMonthlyReport(month) {
+  const csvPath = await exportMonthToCsv(month);
   log(`Sistem laporan membaca file ${path.basename(csvPath)} ...`);
   const text = fs.readFileSync(csvPath, 'utf8');
   const rows = parseCsv(text);
@@ -150,7 +142,13 @@ function generateMonthlyReport(month) {
 
 if (require.main === module) {
   const month = process.argv[2] || '2026-06';
-  console.log(JSON.stringify(generateMonthlyReport(month), null, 2));
+  generateMonthlyReport(month)
+    .then((r) => console.log(JSON.stringify(r, null, 2)))
+    .then(() => require('./datasource').close())
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }
 
 module.exports = { generateMonthlyReport, exportMonthToCsv, parseCsv };
