@@ -95,6 +95,8 @@ class MessageBroker extends EventEmitter {
       prefetch: opts.prefetch || 1,    // maksimum pesan diproses bersamaan
       inFlight: 0,
       processingDelayMs: opts.processingDelayMs || 0,
+      // Setelah maxAttempts kali gagal, pesan dipindah ke Dead-Letter Queue.
+      maxAttempts: opts.maxAttempts || Infinity,
     };
     q.consumers.push(consumer);
     this._dispatch(q);
@@ -136,8 +138,35 @@ class MessageBroker extends EventEmitter {
       this._ack(q, consumer, msg);
     } catch (err) {
       this.emit('handler-error', { queue: q.name, message: msg, error: err });
-      this._nack(q, consumer, msg, true);
+      // Bila sudah melebihi batas percobaan -> kirim ke Dead-Letter Queue.
+      if (msg.attempts >= consumer.maxAttempts) {
+        this._deadLetter(q, consumer, msg, err);
+      } else {
+        this._nack(q, consumer, msg, true);
+      }
     }
+  }
+
+  /** Pindahkan pesan "beracun" ke Dead-Letter Queue: {queue}.dlq */
+  _deadLetter(q, consumer, msg, err) {
+    const idx = q.messages.indexOf(msg);
+    if (idx !== -1) q.messages.splice(idx, 1);
+    consumer.inFlight = Math.max(0, consumer.inFlight - 1);
+    this._persist(q);
+
+    const dlqName = `${q.name}.dlq`;
+    const dlq = this.assertQueue(dlqName);
+    dlq.messages.push({
+      id: ++this._seq,
+      payload: msg.payload,
+      enqueued_at: new Date().toISOString(),
+      delivered: false,
+      attempts: 0,
+      dead_letter: { from: q.name, attempts: msg.attempts, reason: (err && err.message) || 'unknown' },
+    });
+    this._persist(dlq);
+    this.emit('dead-letter', { queue: q.name, dlq: dlqName, message: msg, error: err });
+    this._dispatch(q);
   }
 
   _ack(q, consumer, msg) {

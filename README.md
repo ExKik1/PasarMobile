@@ -117,6 +117,33 @@ penjadwalan, dan troubleshooting) ada di [`SETUP.md`](SETUP.md).**
 > Catatan: skrip Kasus 2 memakai flag `--no-warnings` karena modul `node:sqlite`
 > masih berstatus eksperimental di Node.
 
+## Pengujian (Testing)
+
+Test ditulis dengan **test runner bawaan Node.js** (`node:test` + `node:assert`),
+jadi **tidak butuh Jest/Mocha** dan langsung bisa dijalankan:
+
+```bash
+npm test
+```
+
+Cakupan (17 test, semuanya lulus):
+
+| Berkas test | Kasus | Skenario yang diuji |
+|-------------|-------|---------------------|
+| `test/kasus1.payment-service.test.js` | 1 | sukses, gagal gateway, **timeout + retry**, retry lalu sukses, validasi input, **idempotency** (key & order_id) |
+| `test/kasus2.aggregator.test.js` | 2 | agregasi per jenis & per hari, format CSV salah, file tidak ditemukan, baca CSV nyata, **idempotency per bulan** |
+| `test/kasus3.integration.test.js` | 3 | semua pesan diproses & status DB benar, **pesan beracun → Dead-Letter Queue**, **durable** (pulih dari disk) |
+
+Komponen "nyata" yang ditambahkan untuk memenuhi pertimbangan teknis:
+
+- **Kasus 1:** `payment-service.js` (validasi, idempotency key, timeout, retry terbatas,
+  logging) + `transaction-store.js` (SQLite, status transaksi).
+- **Kasus 2:** `aggregator.js` (total per jenis/hari) + `report-store.js`
+  (tabel `monthly_summary`, idempoten per bulan).
+- **Kasus 3:** `order-store.js` (tabel `orders`), `order-consumer.js`, broker dengan
+  **Dead-Letter Queue**, serta varian RabbitMQ nyata `order-publisher-amqp.js` /
+  `order-consumer-amqp.js` (persistent delivery, manual ack, DLQ).
+
 ## Struktur Proyek
 
 ```
@@ -154,3 +181,66 @@ Di lingkungan produksi nyata, metode-metode ini biasanya memakai layanan ekstern
 proyek ini, komponen tersebut **direplikasi konsepnya** dengan modul bawaan Node.js
 agar bisa dijalankan tanpa infrastruktur tambahan, sambil tetap menunjukkan
 karakteristik utama tiap metode (synchronous, batch, asynchronous).
+
+
+## Contoh Input & Output
+
+### Kasus 1 — REST API (JSON)
+Request (Mobile App → `POST /api/payments/confirm`):
+```json
+{ "order_id": "ORD-1001", "amount": 150000, "payment_method": "qris", "idempotency_key": "key-abc" }
+```
+Response sukses:
+```json
+{ "order_id": "ORD-1001", "status": "PAID", "transaction_id": "TRX-XXXX", "idempotent_replay": false }
+```
+Response gagal (saldo kurang / ditolak):
+```json
+{ "order_id": "ORD-1002", "status": "FAILED", "reason": "INSUFFICIENT_FUNDS" }
+```
+
+### Kasus 2 — File + Database (CSV)
+Input CSV hasil ekspor (`./exports/transactions-YYYY-MM.csv`):
+```csv
+date,amount,type
+2026-05-01,10000,TOPUP
+2026-05-01,5000,BELANJA
+2026-05-02,20000,TOPUP
+```
+Output tabel `monthly_summary` (report DB):
+```
+month     type      total_amount  count
+2026-05   TOPUP     30000         2
+2026-05   BELANJA   5000          1
+```
+
+### Kasus 3 — Message Broker (JSON)
+Pesan yang dipublikasikan ke queue `order.status`:
+```json
+{ "order_id": "ORD-1001", "status": "delivered", "timestamp": "2026-06-16T10:00:00Z" }
+```
+Hasil di tabel `orders` setelah diproses consumer:
+```
+id         status     updated_at
+ORD-1001   delivered  2026-06-16T10:00:00Z
+```
+Pesan dengan `status` tidak dikenal akan otomatis dipindah ke `order.status.dlq`
+(Dead-Letter Queue) setelah melewati batas percobaan.
+
+## Diagram Alur (ringkas)
+
+```
+KASUS 1 (synchronous):
+  Mobile App --POST /confirm--> Payment Service --charge()--> Payment Gateway
+            <----- JSON -------               <---- resp ----
+  (validasi -> idempotency -> timeout+retry -> simpan ke SQLite -> balas)
+
+KASUS 2 (batch):
+  [DB Transaksi] --exporter--> CSV --aggregator--> [Report DB: monthly_summary]
+                 \---------- query SELECT langsung (alternatif) ----------/
+
+KASUS 3 (asynchronous):
+  Kurir(Publisher) --order.status--> [Queue] --(prefetch=1)--> Consumer --update--> [orders]
+                                        |  gagal berulang
+                                        +--> [order.status.dlq] (Dead-Letter Queue)
+```

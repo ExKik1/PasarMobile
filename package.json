@@ -12,7 +12,10 @@
     "kasus3": "node src/kasus3-message-broker/demo.js",
     "kasus3:worker": "node src/kasus3-message-broker/pasar-consumer-amqp.js",
     "kasus3:publish": "node src/kasus3-message-broker/courier-producer-amqp.js",
-    "demo:all": "node --no-warnings scripts/run-all.js"
+    "kasus3:order:worker": "node src/kasus3-message-broker/order-consumer-amqp.js",
+    "kasus3:order:publish": "node src/kasus3-message-broker/order-publisher-amqp.js",
+    "demo:all": "node --no-warnings scripts/run-all.js",
+    "test": "node --test --no-warnings \"test/*.test.js\""
   },
   "optionalDependencies": {
     "amqplib": "^0.10.4",

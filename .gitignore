@@ -4,6 +4,7 @@ node_modules/
 .env
 
 # Berkas data yang dihasilkan saat runtime (database, ekspor CSV, laporan, queue)
+src/kasus1-rest-api/data/
 src/kasus2-batch-report/data/
 src/kasus3-message-broker/data/
 
