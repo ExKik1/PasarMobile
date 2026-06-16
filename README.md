@@ -244,3 +244,16 @@ KASUS 3 (asynchronous):
                                         |  gagal berulang
                                         +--> [order.status.dlq] (Dead-Letter Queue)
 ```
+
+
+## Bagian B & C (Tugas Tambahan)
+
+- **Bagian B — Arsitektur Integrasi:** Diagram Alur Data (Mobile App, Web Server,
+  Database, API/Broker) ada di [`docs/bagian-b-arsitektur-integrasi.md`](docs/bagian-b-arsitektur-integrasi.md)
+  (diagram Mermaid + versi ASCII).
+- **Bagian C — Desain RESTful API:** dua endpoint JSON yang bisa dijalankan
+  (`GET /api/stock/{id}` & `POST /api/shipment`).
+  ```bash
+  npm run bagianC      # server di http://127.0.0.1:4003
+  ```
+  Contoh request/response lengkap di [`src/bagian-c-rest-api/README.md`](src/bagian-c-rest-api/README.md).
