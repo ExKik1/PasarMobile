@@ -14,6 +14,7 @@
     "kasus3:publish": "node src/kasus3-message-broker/courier-producer-amqp.js",
     "kasus3:order:worker": "node src/kasus3-message-broker/order-consumer-amqp.js",
     "kasus3:order:publish": "node src/kasus3-message-broker/order-publisher-amqp.js",
+    "bagianC": "node src/bagian-c-rest-api/stock-shipment-api.js",
     "demo:all": "node --no-warnings scripts/run-all.js",
     "test": "node --test --no-warnings \"test/*.test.js\""
   },
