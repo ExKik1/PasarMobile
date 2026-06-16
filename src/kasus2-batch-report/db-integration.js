@@ -6,8 +6,7 @@
  * Sistem laporan terhubung LANGSUNG ke database transaksi dan menjalankan
  * query agregasi (di sisi DB) untuk menyusun laporan bulanan.
  *
- * Backend (SQLite / PostgreSQL) dipilih lewat .env (DB_DRIVER) dan disembunyikan
- * di balik modul datasource. Ini adalah BATCH PROCESSING: 1 bulan sekaligus.
+ * Backend: SQLite (file lokal) lewat modul datasource. Ini adalah BATCH PROCESSING: 1 bulan sekaligus.
  */
 
 const { makeLogger } = require('../shared/logger');

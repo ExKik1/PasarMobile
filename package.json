@@ -1,7 +1,7 @@
 {
   "name": "pasarmobile-integration-demo",
   "version": "1.0.0",
-  "description": "Implementasi 3 metode integrasi sistem untuk studi kasus PasarMobile: REST API (synchronous), File + Database Integration (batch), dan Message Broker (asynchronous). Mendukung mode demo (tanpa dependency) dan mode nyata (Midtrans, PostgreSQL, RabbitMQ).",
+  "description": "Implementasi 3 metode integrasi sistem untuk studi kasus PasarMobile: REST API (synchronous), File + Database Integration (batch), dan Message Broker (asynchronous). Mode lokal sederhana, tanpa dependency eksternal.",
   "private": true,
   "scripts": {
     "kasus1": "node src/kasus1-rest-api/demo.js",
@@ -10,17 +10,9 @@
     "kasus2": "node --no-warnings src/kasus2-batch-report/generate-report.js",
     "kasus2:seed": "node --no-warnings src/kasus2-batch-report/seed-database.js",
     "kasus3": "node src/kasus3-message-broker/demo.js",
-    "kasus3:worker": "node src/kasus3-message-broker/pasar-consumer-amqp.js",
-    "kasus3:publish": "node src/kasus3-message-broker/courier-producer-amqp.js",
-    "kasus3:order:worker": "node src/kasus3-message-broker/order-consumer-amqp.js",
-    "kasus3:order:publish": "node src/kasus3-message-broker/order-publisher-amqp.js",
     "bagianC": "node src/bagian-c-rest-api/stock-shipment-api.js",
     "demo:all": "node --no-warnings scripts/run-all.js",
     "test": "node --test --no-warnings \"test/*.test.js\""
-  },
-  "optionalDependencies": {
-    "amqplib": "^0.10.4",
-    "pg": "^8.12.0"
   },
   "engines": {
     "node": ">=20.12"
