@@ -1,19 +1,25 @@
 {
   "name": "pasarmobile-integration-demo",
   "version": "1.0.0",
-  "description": "Implementasi 3 metode integrasi sistem untuk studi kasus PasarMobile: REST API (synchronous), File + Database Integration (batch), dan Message Broker (asynchronous). Pure Node.js, tanpa dependency eksternal.",
+  "description": "Implementasi 3 metode integrasi sistem untuk studi kasus PasarMobile: REST API (synchronous), File + Database Integration (batch), dan Message Broker (asynchronous). Mendukung mode demo (tanpa dependency) dan mode nyata (Midtrans, PostgreSQL, RabbitMQ).",
   "private": true,
   "scripts": {
-    "kasus1": "NODE_OPTIONS= node src/kasus1-rest-api/demo.js",
-    "kasus1:gateway": "NODE_OPTIONS= node src/kasus1-rest-api/bank-gateway.js",
-    "kasus1:api": "NODE_OPTIONS= node src/kasus1-rest-api/payment-api.js",
-    "kasus2": "NODE_OPTIONS= NODE_NO_WARNINGS=1 node src/kasus2-batch-report/generate-report.js",
-    "kasus2:seed": "NODE_OPTIONS= NODE_NO_WARNINGS=1 node src/kasus2-batch-report/seed-database.js",
-    "kasus3": "NODE_OPTIONS= node src/kasus3-message-broker/demo.js",
-    "demo:all": "NODE_OPTIONS= node scripts/run-all.js"
+    "kasus1": "node src/kasus1-rest-api/demo.js",
+    "kasus1:gateway": "node src/kasus1-rest-api/bank-gateway.js",
+    "kasus1:api": "node src/kasus1-rest-api/payment-api.js",
+    "kasus2": "node --no-warnings src/kasus2-batch-report/generate-report.js",
+    "kasus2:seed": "node --no-warnings src/kasus2-batch-report/seed-database.js",
+    "kasus3": "node src/kasus3-message-broker/demo.js",
+    "kasus3:worker": "node src/kasus3-message-broker/pasar-consumer-amqp.js",
+    "kasus3:publish": "node src/kasus3-message-broker/courier-producer-amqp.js",
+    "demo:all": "node --no-warnings scripts/run-all.js"
+  },
+  "optionalDependencies": {
+    "amqplib": "^0.10.4",
+    "pg": "^8.12.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.12"
   },
   "license": "MIT"
 }

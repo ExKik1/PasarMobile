@@ -10,9 +10,11 @@
 const path = require('path');
 const fs = require('fs');
 const { makeLogger } = require('../shared/logger');
-const { seed, DATA_DIR } = require('./seed-database');
+const { config } = require('../shared/config');
+const datasource = require('./datasource');
 const dbIntegration = require('./db-integration');
 const fileIntegration = require('./file-integration');
+const { DATA_DIR } = require('./seed-database');
 
 const log = makeLogger('BATCH-REPORT', 'blue');
 
@@ -36,21 +38,22 @@ function printReport(report) {
   }
 }
 
-function main() {
+async function main() {
   const month = process.argv[2] || '2026-06';
   console.log('\n=== KASUS 2: File + Database Integration - Laporan Batch Bulanan ===\n');
+  log(`Backend database aktif: ${config.db.driver.toUpperCase()}`);
 
-  // Pastikan ada data. Seed database transaksi.
-  seed();
+  // Pastikan ada data (SQLite: seed file; PostgreSQL: buat tabel + seed bila kosong).
+  await datasource.backend.ensureSeeded();
 
   // --- Metode A: Database Integration (query langsung) ---
   console.log('\n--- Metode A: DATABASE INTEGRATION (query SELECT langsung ke DB) ---');
-  const dbReport = dbIntegration.generateMonthlyReport(month);
+  const dbReport = await dbIntegration.generateMonthlyReport(month);
   printReport(dbReport);
 
   // --- Metode B: File Integration (ekspor CSV lalu baca file) ---
   console.log('\n--- Metode B: FILE INTEGRATION (ekspor CSV lalu proses file) ---');
-  const fileReport = fileIntegration.generateMonthlyReport(month);
+  const fileReport = await fileIntegration.generateMonthlyReport(month);
   printReport(fileReport);
 
   // --- Verifikasi: kedua metode harus menghasilkan angka yang sama ---
@@ -82,10 +85,15 @@ function main() {
   console.log('\nKesimpulan: laporan bulanan diproses sekali (batch), tidak real-time.');
   console.log('File Integration cocok untuk sistem terpisah; Database Integration');
   console.log('cocok bila satu infrastruktur. Keduanya memproses data besar sekaligus.\n');
+
+  await datasource.close();
 }
 
 if (require.main === module) {
-  main();
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }
 
 module.exports = { main };

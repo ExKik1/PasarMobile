@@ -20,6 +20,45 @@ const DB_PATH = path.join(DATA_DIR, 'transactions.db');
 const CATEGORIES = ['Elektronik', 'Fashion', 'Makanan', 'Rumah Tangga', 'Olahraga'];
 const USERS = ['Budi', 'Sari', 'Andi', 'Maya', 'Joko', 'Rina'];
 
+/**
+ * Menghasilkan baris transaksi contoh secara deterministik (PRNG ber-seed),
+ * dipakai bersama oleh backend SQLite maupun PostgreSQL agar datanya sama.
+ * @returns {Array<{order_id,buyer,category,amount,status,created_at}>}
+ */
+function generateSeedRows() {
+  let seedState = 12345;
+  const rand = () => {
+    seedState = (seedState * 1103515245 + 12345) & 0x7fffffff;
+    return seedState / 0x7fffffff;
+  };
+  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+
+  const months = ['2026-05', '2026-06'];
+  const rows = [];
+  let counter = 1000;
+
+  for (const month of months) {
+    const txCount = 60 + Math.floor(rand() * 20); // ~60-80 transaksi/bulan
+    for (let i = 0; i < txCount; i++) {
+      const day = String(1 + Math.floor(rand() * 27)).padStart(2, '0');
+      const hour = String(Math.floor(rand() * 24)).padStart(2, '0');
+      const min = String(Math.floor(rand() * 60)).padStart(2, '0');
+      const amount = (5 + Math.floor(rand() * 200)) * 1000; // Rp5.000 - Rp205.000
+      const r = rand();
+      const status = r < 0.85 ? 'PAID' : r < 0.93 ? 'REFUNDED' : 'FAILED';
+      rows.push({
+        order_id: `ORD-${counter++}`,
+        buyer: pick(USERS),
+        category: pick(CATEGORIES),
+        amount,
+        status,
+        created_at: `${month}-${day}T${hour}:${min}:00.000Z`,
+      });
+    }
+  }
+  return { rows, months };
+}
+
 function seed() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   // Mulai dari database bersih agar hasil demo konsisten.
@@ -43,49 +82,20 @@ function seed() {
      VALUES (?, ?, ?, ?, ?, ?)`
   );
 
-  // Deterministic PRNG sederhana supaya data seed selalu sama tiap dijalankan.
-  let seedState = 12345;
-  const rand = () => {
-    seedState = (seedState * 1103515245 + 12345) & 0x7fffffff;
-    return seedState / 0x7fffffff;
-  };
-  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
-
-  // Buat data untuk 2 bulan: Mei 2026 dan Juni 2026.
-  const months = ['2026-05', '2026-06'];
-  let counter = 1000;
-  let total = 0;
-
-  for (const month of months) {
-    const txCount = 60 + Math.floor(rand() * 20); // ~60-80 transaksi/bulan
-    for (let i = 0; i < txCount; i++) {
-      const day = String(1 + Math.floor(rand() * 27)).padStart(2, '0');
-      const hour = String(Math.floor(rand() * 24)).padStart(2, '0');
-      const min = String(Math.floor(rand() * 60)).padStart(2, '0');
-      const amount = (5 + Math.floor(rand() * 200)) * 1000; // Rp5.000 - Rp205.000
-      const r = rand();
-      const status = r < 0.85 ? 'PAID' : r < 0.93 ? 'REFUNDED' : 'FAILED';
-      insert.run(
-        `ORD-${counter++}`,
-        pick(USERS),
-        pick(CATEGORIES),
-        amount,
-        status,
-        `${month}-${day}T${hour}:${min}:00.000Z`
-      );
-      total++;
-    }
+  const { rows, months } = generateSeedRows();
+  for (const t of rows) {
+    insert.run(t.order_id, t.buyer, t.category, t.amount, t.status, t.created_at);
   }
 
   const count = db.prepare('SELECT COUNT(*) AS c FROM transactions').get();
   db.close();
   log.ok(`Database transaksi dibuat: ${DB_PATH}`);
   log(`Total ${count.c} transaksi (bulan: ${months.join(', ')})`);
-  return { DB_PATH, total };
+  return { DB_PATH, total: rows.length };
 }
 
 if (require.main === module) {
   seed();
 }
 
-module.exports = { seed, DB_PATH, DATA_DIR };
+module.exports = { seed, generateSeedRows, DB_PATH, DATA_DIR };

@@ -9,7 +9,7 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const env = { ...process.env, NODE_OPTIONS: '', NODE_NO_WARNINGS: '1' };
+const env = { ...process.env, NODE_NO_WARNINGS: '1' };
 
 const steps = [
   ['KASUS 1 - REST API (Synchronous)', 'src/kasus1-rest-api/demo.js'],
