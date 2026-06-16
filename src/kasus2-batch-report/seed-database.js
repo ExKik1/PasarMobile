@@ -21,8 +21,7 @@ const CATEGORIES = ['Elektronik', 'Fashion', 'Makanan', 'Rumah Tangga', 'Olahrag
 const USERS = ['Budi', 'Sari', 'Andi', 'Maya', 'Joko', 'Rina'];
 
 /**
- * Menghasilkan baris transaksi contoh secara deterministik (PRNG ber-seed),
- * dipakai bersama oleh backend SQLite maupun PostgreSQL agar datanya sama.
+ * Menghasilkan baris transaksi contoh secara deterministik (PRNG ber-seed).
  * @returns {Array<{order_id,buyer,category,amount,status,created_at}>}
  */
 function generateSeedRows() {

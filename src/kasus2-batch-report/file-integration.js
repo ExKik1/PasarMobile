@@ -26,7 +26,7 @@ function csvEscape(value) {
 
 /**
  * LANGKAH 1 (sisi sistem transaksi): ekspor transaksi 1 bulan ke file CSV.
- * Mengambil data lewat datasource (SQLite/PostgreSQL). Mengembalikan path CSV.
+ * Mengambil data lewat datasource (SQLite). Mengembalikan path CSV.
  */
 async function exportMonthToCsv(month) {
   await backend.ensureSeeded();

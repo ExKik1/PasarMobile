@@ -41,9 +41,9 @@ function printReport(report) {
 async function main() {
   const month = process.argv[2] || '2026-06';
   console.log('\n=== KASUS 2: File + Database Integration - Laporan Batch Bulanan ===\n');
-  log(`Backend database aktif: ${config.db.driver.toUpperCase()}`);
+  log(`Backend database aktif: SQLITE`);
 
-  // Pastikan ada data (SQLite: seed file; PostgreSQL: buat tabel + seed bila kosong).
+  // Pastikan ada data (SQLite: seed file bila belum ada).
   await datasource.backend.ensureSeeded();
 
   // --- Metode A: Database Integration (query langsung) ---
