@@ -1,0 +1,9 @@
+node_modules/
+
+# Berkas data yang dihasilkan saat runtime (database, ekspor CSV, laporan, queue)
+src/kasus2-batch-report/data/
+src/kasus3-message-broker/data/
+
+# OS / editor
+.DS_Store
+*.log
